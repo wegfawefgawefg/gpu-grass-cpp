@@ -38,6 +38,7 @@ struct alignas(16) SceneUniforms
     Float4 grassColorBase;
     Float4 grassColorTip;
     Float4 groundColor;
+    Float4 repulsorLightInfo;
     UInt4 counts;
 };
 
@@ -50,7 +51,7 @@ struct alignas(16) PresentUniforms
 struct DemoSettings
 {
     float renderScale = 0.8f;
-    std::uint32_t bladeCount = 70000;
+    float grassDensity = 22.0f;
     float fieldExtent = 28.0f;
     float bladeHeight = 1.1f;
     float bladeWidth = 0.085f;
@@ -68,20 +69,25 @@ struct DemoSettings
     float windGust = 0.60f;
     float sunYawDegrees = 28.0f;
     float sunPitchDegrees = 42.0f;
-    float sunIntensity = 1.85f;
-    float ambient = 0.22f;
+    float sunIntensity = 0.10f;
+    float ambient = 0.34f;
     float groundBrightness = 0.9f;
     float repulsorRadius = 2.2f;
     float repulsorStrength = 1.4f;
     float repulsorSpeed = 0.8f;
+    bool repulsorLights = true;
+    float repulsorLightStrength = 0.45f;
+    float repulsorLightRadius = 2.4f;
     bool animateRepulsors = true;
     int repulsorCount = 3;
     bool showImGuiDemo = false;
+    std::array<float, 3> grassBaseColor = {0.10f, 0.24f, 0.07f};
+    std::array<float, 3> grassTipColor = {0.46f, 0.68f, 0.24f};
 };
 
 struct RepulsorState
 {
-    float orbitRadius = 0.0f;
+    float orbitFactor = 0.0f;
     float orbitAngle = 0.0f;
     float speed = 0.0f;
     float height = 0.0f;

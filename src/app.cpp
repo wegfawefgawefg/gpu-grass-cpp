@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <stdexcept>
 #include <string_view>
@@ -9,11 +10,13 @@
 #include <imgui.h>
 
 #include "grass_field.h"
+#include "settings_io.h"
 
 namespace
 {
 constexpr std::string_view kWindowTitle = "gpu-grass-cpp";
 constexpr std::string_view kUiFontPath = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf";
+constexpr std::string_view kSettingsJsonPath = GPU_SETTINGS_JSON_PATH;
 constexpr int kInitialWindowWidth = 1600;
 constexpr int kInitialWindowHeight = 900;
 constexpr std::string_view kX11DialogWindowType = "_NET_WM_WINDOW_TYPE_DIALOG";
@@ -59,6 +62,22 @@ Float3 BuildHorizontalDirection(float yawDegrees)
 {
     const float yaw = yawDegrees * kDegreesToRadians;
     return Normalize({std::cos(yaw), 0.0f, std::sin(yaw)});
+}
+
+float ComputeFieldArea(float fieldExtent)
+{
+    const float extent = std::max(fieldExtent, 0.0f);
+    const float sideLength = extent * 2.0f;
+    return sideLength * sideLength;
+}
+
+std::uint32_t ComputeBladeCount(const DemoSettings& settings)
+{
+    const double fieldArea = static_cast<double>(ComputeFieldArea(settings.fieldExtent));
+    const double requestedDensity = std::max(static_cast<double>(settings.grassDensity), 0.0);
+    const auto requestedBladeCount =
+        static_cast<std::uint64_t>(std::llround(fieldArea * requestedDensity));
+    return static_cast<std::uint32_t>(std::min<std::uint64_t>(requestedBladeCount, kMaxBladeCount));
 }
 } // namespace
 
@@ -151,10 +170,19 @@ void App::Initialize()
     m_blades = BuildGrassField(kMaxBladeCount);
     m_renderer.Initialize(m_window, m_blades);
 
-    m_repulsors[0] = {.orbitRadius = 4.0f, .orbitAngle = 0.0f, .speed = 0.78f, .height = 0.55f};
-    m_repulsors[1] = {.orbitRadius = 7.0f, .orbitAngle = 1.8f, .speed = -0.56f, .height = 0.45f};
-    m_repulsors[2] = {.orbitRadius = 10.5f, .orbitAngle = -1.2f, .speed = 0.43f, .height = 0.65f};
-    m_repulsors[3] = {.orbitRadius = 13.0f, .orbitAngle = 2.7f, .speed = -0.34f, .height = 0.50f};
+    m_repulsors[0] = {.orbitFactor = 0.14f, .orbitAngle = 0.0f, .speed = 0.78f, .height = 0.55f};
+    m_repulsors[1] = {.orbitFactor = 0.25f, .orbitAngle = 1.8f, .speed = -0.56f, .height = 0.45f};
+    m_repulsors[2] = {.orbitFactor = 0.38f, .orbitAngle = -1.2f, .speed = 0.43f, .height = 0.65f};
+    m_repulsors[3] = {.orbitFactor = 0.46f, .orbitAngle = 2.7f, .speed = -0.34f, .height = 0.50f};
+
+    if (LoadDemoSettings(m_settings, kSettingsJsonPath, m_settingsStatus))
+    {
+        m_settingsStatus = std::string("Loaded ") + std::string(kSettingsJsonPath);
+    }
+    else
+    {
+        m_settingsStatus = std::string("Preset path: ") + std::string(kSettingsJsonPath);
+    }
 
     UpdateRepulsors(0.0f);
     UpdateOverlayText();
@@ -261,19 +289,21 @@ void App::Update(float deltaSeconds)
 
 void App::UpdateOverlayText()
 {
+    const std::uint32_t bladeCount = ComputeBladeCount(m_settings);
     const float msPerFrame = m_smoothedFps > 0.0f ? 1000.0f / m_smoothedFps : 0.0f;
     char text[256] = {};
     std::snprintf(
         text,
         sizeof(text),
-        "%.2f ms   %.0f fps   %ux%u -> %ux%u   blades %u   repulsors %d",
+        "%.2f ms   %.0f fps   %ux%u -> %ux%u   density %.1f   blades %u   repulsors %d",
         msPerFrame,
         m_smoothedFps,
         m_renderWidth,
         m_renderHeight,
         m_windowWidth,
         m_windowHeight,
-        m_settings.bladeCount,
+        m_settings.grassDensity,
+        bladeCount,
         m_settings.repulsorCount
     );
     m_overlay.Update(text);
@@ -292,10 +322,11 @@ void App::UpdateRepulsors(float deltaSeconds)
         }
 
         const float angle = repulsor.orbitAngle + static_cast<float>(index) * 0.7f;
+        const float orbitRadius = repulsor.orbitFactor * m_settings.fieldExtent;
         repulsor.center = {
-            std::cos(angle) * repulsor.orbitRadius,
+            std::cos(angle) * orbitRadius,
             repulsor.height,
-            std::sin(angle * 1.15f) * repulsor.orbitRadius * 0.65f,
+            std::sin(angle * 1.15f) * orbitRadius * 0.65f,
         };
         if (deltaSeconds > 0.0f)
         {
@@ -324,32 +355,36 @@ void App::BuildUi()
         m_sizeDirty = true;
     }
 
-    int bladeCount = static_cast<int>(m_settings.bladeCount);
-    if (ImGui::SliderInt("Blade Count", &bladeCount, 12000, static_cast<int>(kMaxBladeCount)))
+    ImGui::SliderFloat("Density", &m_settings.grassDensity, 0.0f, 48.0f, "%.1f blades/m^2");
+    if (ImGui::SliderFloat("Field Radius", &m_settings.fieldExtent, 12.0f, 50.0f, "%.1f m"))
     {
-        m_settings.bladeCount = static_cast<std::uint32_t>(bladeCount);
+        UpdateRepulsors(0.0f);
     }
-
-    ImGui::SliderFloat("Field Extent", &m_settings.fieldExtent, 12.0f, 50.0f, "%.1f m");
+    const float fieldArea = ComputeFieldArea(m_settings.fieldExtent);
+    const std::uint32_t activeBladeCount = ComputeBladeCount(m_settings);
+    const float actualDensity =
+        fieldArea > 0.0f ? static_cast<float>(activeBladeCount) / fieldArea : 0.0f;
+    ImGui::Text(
+        "%u active blades over %.0f m^2 (%.1f actual/m^2)",
+        activeBladeCount,
+        fieldArea,
+        actualDensity
+    );
     ImGui::SliderFloat("Blade Height", &m_settings.bladeHeight, 0.35f, 2.4f, "%.2f");
     ImGui::SliderFloat("Blade Width", &m_settings.bladeWidth, 0.02f, 0.20f, "%.3f");
     ImGui::SliderFloat("Flex", &m_settings.flex, 0.2f, 2.5f, "%.2f");
     ImGui::SliderFloat("Curvature", &m_settings.curvature, 0.2f, 2.5f, "%.2f");
     ImGui::SliderFloat("Root Stiffness", &m_settings.rootStiffness, 0.0f, 0.65f, "%.2f");
     ImGui::SliderFloat("Static Lean", &m_settings.staticLean, 0.0f, 0.18f, "%.2f");
+    ImGui::ColorEdit3("Grass Base", m_settings.grassBaseColor.data());
+    ImGui::ColorEdit3("Grass Tip", m_settings.grassTipColor.data());
 
     ImGui::SeparatorText("Wind");
     ImGui::SliderFloat("Wind Yaw", &m_settings.windYawDegrees, -180.0f, 180.0f, "%.0f deg");
     ImGui::SliderFloat("Wind Strength", &m_settings.windStrength, 0.0f, 2.5f, "%.2f");
     ImGui::SliderFloat("Wind Time", &m_settings.windTimeScale, 0.1f, 2.5f, "%.2f");
     ImGui::SliderFloat("Noise Scale", &m_settings.windNoiseScale, 0.01f, 0.35f, "%.3f");
-    ImGui::SliderFloat(
-        "Detail Scale",
-        &m_settings.windDetailNoiseScale,
-        0.04f,
-        0.9f,
-        "%.3f"
-    );
+    ImGui::SliderFloat("Detail Scale", &m_settings.windDetailNoiseScale, 0.04f, 0.9f, "%.3f");
     ImGui::SliderFloat("Detail Strength", &m_settings.windDetailStrength, 0.0f, 1.2f, "%.2f");
     ImGui::SliderFloat("Crosswind", &m_settings.windCross, 0.0f, 0.8f, "%.2f");
     ImGui::SliderFloat("Wind Gust", &m_settings.windGust, 0.0f, 1.5f, "%.2f");
@@ -363,12 +398,59 @@ void App::BuildUi()
 
     ImGui::SeparatorText("Repulsors");
     ImGui::Checkbox("Animate Repulsors", &m_settings.animateRepulsors);
-    ImGui::SliderInt("Repulsor Count", &m_settings.repulsorCount, 0, static_cast<int>(kMaxRepulsors));
+    ImGui::SliderInt(
+        "Repulsor Count",
+        &m_settings.repulsorCount,
+        0,
+        static_cast<int>(kMaxRepulsors)
+    );
     ImGui::SliderFloat("Repulsor Radius", &m_settings.repulsorRadius, 0.3f, 5.0f, "%.2f");
     ImGui::SliderFloat("Repulsor Strength", &m_settings.repulsorStrength, 0.0f, 3.0f, "%.2f");
     ImGui::SliderFloat("Repulsor Speed", &m_settings.repulsorSpeed, 0.0f, 2.0f, "%.2f");
+    ImGui::Checkbox("Repulsor Lights", &m_settings.repulsorLights);
+    ImGui::SliderFloat(
+        "Repulsor Light Strength",
+        &m_settings.repulsorLightStrength,
+        0.0f,
+        1.5f,
+        "%.2f"
+    );
+    ImGui::SliderFloat(
+        "Repulsor Light Radius",
+        &m_settings.repulsorLightRadius,
+        0.8f,
+        5.0f,
+        "%.2f"
+    );
 
     ImGui::Separator();
+    if (ImGui::Button("Save JSON"))
+    {
+        if (SaveDemoSettings(m_settings, kSettingsJsonPath, m_settingsStatus))
+        {
+            m_settingsStatus = std::string("Saved ") + std::string(kSettingsJsonPath);
+        }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Load JSON"))
+    {
+        if (LoadDemoSettings(m_settings, kSettingsJsonPath, m_settingsStatus))
+        {
+            m_settingsStatus = std::string("Loaded ") + std::string(kSettingsJsonPath);
+            UpdateRepulsors(0.0f);
+            m_sizeDirty = true;
+        }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Reset"))
+    {
+        m_settings = DemoSettings{};
+        m_settingsStatus = "Reset to defaults";
+        UpdateRepulsors(0.0f);
+        m_sizeDirty = true;
+    }
+
+    ImGui::TextWrapped("%s", m_settingsStatus.c_str());
     ImGui::Text("Blade segments fixed at %u for now.", kBladeSegmentCount);
     ImGui::Checkbox("ImGui Demo", &m_settings.showImGuiDemo);
     ImGui::Text("Hold RMB to look around.");
@@ -392,24 +474,24 @@ void App::SyncRendererSize()
     const float clampedScale = std::clamp(m_settings.renderScale, 0.35f, 1.0f);
     m_renderWidth =
         std::max(1u, static_cast<std::uint32_t>(static_cast<float>(m_windowWidth) * clampedScale));
-    m_renderHeight = std::max(
-        1u,
-        static_cast<std::uint32_t>(static_cast<float>(m_windowHeight) * clampedScale)
-    );
+    m_renderHeight =
+        std::max(1u, static_cast<std::uint32_t>(static_cast<float>(m_windowHeight) * clampedScale));
     m_renderer.Resize(m_windowWidth, m_windowHeight, m_renderWidth, m_renderHeight);
 }
 
 FrameState App::BuildFrameState() const
 {
     FrameState frame = {};
-    frame.activeBladeCount = std::min(m_settings.bladeCount, kMaxBladeCount);
-    frame.activeRepulsorCount =
-        static_cast<std::uint32_t>(std::clamp(m_settings.repulsorCount, 0, static_cast<int>(kMaxRepulsors)));
+    frame.activeBladeCount = ComputeBladeCount(m_settings);
+    frame.activeRepulsorCount = static_cast<std::uint32_t>(
+        std::clamp(m_settings.repulsorCount, 0, static_cast<int>(kMaxRepulsors))
+    );
 
     frame.scene.viewProjection = m_camera.BuildViewProjection(m_renderWidth, m_renderHeight);
     frame.scene.cameraPositionTime = ToFloat4(m_camera.position, m_elapsedSeconds);
 
-    const Float3 sunDirection = BuildSunDirection(m_settings.sunYawDegrees, m_settings.sunPitchDegrees);
+    const Float3 sunDirection =
+        BuildSunDirection(m_settings.sunYawDegrees, m_settings.sunPitchDegrees);
     const Float3 windDirection = BuildHorizontalDirection(m_settings.windYawDegrees);
     frame.scene.sunDirectionIntensity = ToFloat4(sunDirection, m_settings.sunIntensity);
     frame.scene.sunColorAmbient = {1.0f, 0.95f, 0.86f, m_settings.ambient};
@@ -437,13 +519,29 @@ FrameState App::BuildFrameState() const
         m_settings.windDetailStrength,
         m_settings.staticLean,
     };
-    frame.scene.grassColorBase = {0.08f, 0.22f, 0.05f, 0.0f};
-    frame.scene.grassColorTip = {0.58f, 0.82f, 0.29f, 0.55f};
+    frame.scene.grassColorBase = {
+        m_settings.grassBaseColor[0],
+        m_settings.grassBaseColor[1],
+        m_settings.grassBaseColor[2],
+        0.0f,
+    };
+    frame.scene.grassColorTip = {
+        m_settings.grassTipColor[0],
+        m_settings.grassTipColor[1],
+        m_settings.grassTipColor[2],
+        0.45f,
+    };
     frame.scene.groundColor = {
         0.11f * m_settings.groundBrightness,
         0.18f * m_settings.groundBrightness,
         0.09f * m_settings.groundBrightness,
-        1.0f,
+        0.85f,
+    };
+    frame.scene.repulsorLightInfo = {
+        m_settings.repulsorLights ? 1.0f : 0.0f,
+        m_settings.repulsorLightStrength,
+        m_settings.repulsorLightRadius,
+        0.0f,
     };
     frame.scene.counts = {
         frame.activeBladeCount,
@@ -469,13 +567,15 @@ FrameState App::BuildFrameState() const
     {
         const RepulsorState& state = m_repulsors[index];
         frame.repulsors[index] = {
-            .centerRadius = {state.center.x, state.center.y, state.center.z, m_settings.repulsorRadius},
-            .velocityStrength = {
-                state.velocity.x,
-                state.velocity.y,
-                state.velocity.z,
-                m_settings.repulsorStrength,
-            },
+            .centerRadius =
+                {state.center.x, state.center.y, state.center.z, m_settings.repulsorRadius},
+            .velocityStrength =
+                {
+                    state.velocity.x,
+                    state.velocity.y,
+                    state.velocity.z,
+                    m_settings.repulsorStrength,
+                },
         };
     }
 

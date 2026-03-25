@@ -2,7 +2,7 @@
 
 Standalone Vulkan grass-field demo built with SDL3, SDL3_ttf, and ImGui.
 
-The current demo renders a lit procedural field of grass blades, drives wind with layered trigonometric noise, and animates moving repulsor objects that push the grass away as they travel across the plane. A small `SDL3_ttf` overlay shows live frame stats, while ImGui exposes the grass, wind, light, repulsor, and render-scale controls.
+The current demo renders a lit procedural field of grass blades, drives wind with layered directional noise, and animates moving repulsor objects that push the grass away as they travel across the plane. A small `SDL3_ttf` overlay shows live frame stats, while ImGui exposes density, field size, grass color, wind, light, repulsor, and render-scale controls.
 
 ## Features
 
@@ -10,8 +10,10 @@ The current demo renders a lit procedural field of grass blades, drives wind wit
 - Procedural instanced grass blades with camera-facing ribbons
 - Real-time directional lighting for ground and grass
 - Moving repulsors that bend nearby grass away from their path
+- Optional colored repulsor lights and visible repulsor markers
 - `SDL3_ttf` text overlay for frame timing and resolution info
-- ImGui controls for render scale, grass shape, wind, light, and repulsors
+- ImGui controls for density, field radius, grass color, wind, light, and repulsors
+- Save/load/reset of demo tuning through `assets/demo_settings.json`
 
 ## Build
 

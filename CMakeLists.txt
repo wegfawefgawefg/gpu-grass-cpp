@@ -92,6 +92,7 @@ add_executable(gpu-grass-cpp
   src/camera.cpp
   src/grass_field.cpp
   src/main.cpp
+  src/settings_io.cpp
   src/text_overlay.cpp
   src/vulkan_helpers.cpp
   src/vulkan_renderer.cpp
@@ -130,6 +131,7 @@ target_compile_definitions(gpu-grass-cpp
     GPU_MARKER_FRAG_SHADER_PATH="${CMAKE_CURRENT_BINARY_DIR}/shaders/marker.frag.spv"
     GPU_PRESENT_VERT_SHADER_PATH="${CMAKE_CURRENT_BINARY_DIR}/shaders/present.vert.spv"
     GPU_PRESENT_FRAG_SHADER_PATH="${CMAKE_CURRENT_BINARY_DIR}/shaders/present.frag.spv"
+    GPU_SETTINGS_JSON_PATH="${CMAKE_CURRENT_SOURCE_DIR}/assets/demo_settings.json"
   )
 
 add_dependencies(gpu-grass-cpp gpu-grass-cpp-shaders)

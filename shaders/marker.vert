@@ -1,11 +1,5 @@
 #version 460
 
-struct GrassBlade
-{
-    vec4 rootHeight;
-    vec4 params;
-};
-
 struct Repulsor
 {
     vec4 centerRadius;
@@ -25,6 +19,7 @@ layout(std140, binding = 0) uniform SceneParams
     vec4 grassColorBase;
     vec4 grassColorTip;
     vec4 groundColor;
+    vec4 repulsorLightInfo;
     uvec4 counts;
 } params;
 

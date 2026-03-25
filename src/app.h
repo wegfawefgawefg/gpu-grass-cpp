@@ -42,6 +42,7 @@ struct App
 
     Camera m_camera;
     DemoSettings m_settings;
+    std::string m_settingsStatus;
     TextOverlay m_overlay;
     VulkanRenderer m_renderer;
     std::vector<GrassBladeGpu> m_blades;

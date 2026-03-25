@@ -13,6 +13,7 @@ layout(std140, binding = 0) uniform SceneParams
     vec4 grassColorBase;
     vec4 grassColorTip;
     vec4 groundColor;
+    vec4 repulsorLightInfo;
     uvec4 counts;
 } params;
 
@@ -36,6 +37,17 @@ float noise2(vec2 p)
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
 }
 
+vec3 repulsorLightColor(uint index)
+{
+    const vec3 palette[4] = vec3[](
+        vec3(1.00, 0.56, 0.18),
+        vec3(0.16, 0.82, 1.00),
+        vec3(0.45, 1.00, 0.30),
+        vec3(1.00, 0.28, 0.72)
+    );
+    return palette[index % 4u];
+}
+
 void main()
 {
     vec3 lightDirection = normalize(params.sunDirectionIntensity.xyz);
@@ -54,6 +66,20 @@ void main()
         float ring = exp(-pow((distanceToCenter - radius) / max(radius * 0.12, 0.12), 2.0));
         float core = exp(-pow(distanceToCenter / max(radius * 0.5, 0.18), 2.0));
         repulsorAccent += vec3(0.08, 0.45, 0.82) * (ring * 0.7 + core * 0.18) * params.groundColor.w;
+
+        if (params.repulsorLightInfo.x > 0.5)
+        {
+            vec3 lightCenter =
+                repulsor.centerRadius.xyz + vec3(0.0, repulsor.centerRadius.w * 0.55 + 0.25, 0.0);
+            vec3 toLight = lightCenter - vWorldPos;
+            float lightDistance = length(toLight);
+            float attenuation = max(
+                1.0 - lightDistance / max(radius * params.repulsorLightInfo.z, 0.001),
+                0.0
+            );
+            attenuation *= attenuation;
+            repulsorAccent += repulsorLightColor(index) * attenuation * params.repulsorLightInfo.y * 0.55;
+        }
     }
     litColor += repulsorAccent;
 

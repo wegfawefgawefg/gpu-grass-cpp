@@ -1,5 +1,6 @@
 #include "grass_field.h"
 
+#include <algorithm>
 #include <cmath>
 #include <random>
 
@@ -26,14 +27,19 @@ std::vector<GrassBladeGpu> BuildGrassField(std::uint32_t bladeCount)
 
         blades.push_back({
             .rootHeight = {normalizedX, 0.0f, normalizedZ, unit(rng)},
-            .params = {
-                0.65f + unit(rng) * 0.7f,
-                unit(rng) * 6.28318530718f,
-                unit(rng),
-                unit(rng),
-            },
+            .params =
+                {
+                    0.65f + unit(rng) * 0.7f,
+                    unit(rng) * 6.28318530718f,
+                    unit(rng),
+                    unit(rng),
+                },
         });
     }
+
+    // Shuffle so lower blade counts reduce density across the whole field instead of
+    // truncating one edge of the grid.
+    std::shuffle(blades.begin(), blades.end(), rng);
 
     return blades;
 }
