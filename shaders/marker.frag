@@ -8,6 +8,7 @@ layout(std140, binding = 0) uniform SceneParams
     vec4 sunColorAmbient;
     vec4 windA;
     vec4 windB;
+    vec4 windC;
     vec4 grassShape;
     vec4 grassMotion;
     vec4 grassColorBase;

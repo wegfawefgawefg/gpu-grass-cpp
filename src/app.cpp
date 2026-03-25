@@ -382,12 +382,14 @@ void App::BuildUi()
     ImGui::SeparatorText("Wind");
     ImGui::SliderFloat("Wind Yaw", &m_settings.windYawDegrees, -180.0f, 180.0f, "%.0f deg");
     ImGui::SliderFloat("Wind Strength", &m_settings.windStrength, 0.0f, 2.5f, "%.2f");
-    ImGui::SliderFloat("Wind Time", &m_settings.windTimeScale, 0.1f, 2.5f, "%.2f");
-    ImGui::SliderFloat("Noise Scale", &m_settings.windNoiseScale, 0.01f, 0.35f, "%.3f");
+    ImGui::SliderFloat("Flow Speed", &m_settings.windTimeScale, 0.1f, 2.5f, "%.2f");
+    ImGui::SliderFloat("Flow Scale", &m_settings.windNoiseScale, 0.01f, 0.35f, "%.3f");
     ImGui::SliderFloat("Detail Scale", &m_settings.windDetailNoiseScale, 0.04f, 0.9f, "%.3f");
     ImGui::SliderFloat("Detail Strength", &m_settings.windDetailStrength, 0.0f, 1.2f, "%.2f");
-    ImGui::SliderFloat("Crosswind", &m_settings.windCross, 0.0f, 0.8f, "%.2f");
-    ImGui::SliderFloat("Wind Gust", &m_settings.windGust, 0.0f, 1.5f, "%.2f");
+    ImGui::SliderFloat("Flow Warp", &m_settings.windWarpStrength, 0.0f, 2.5f, "%.2f");
+    ImGui::SliderFloat("Flow Advection", &m_settings.windAdvection, 0.0f, 3.5f, "%.2f");
+    ImGui::SliderFloat("Cross Flow", &m_settings.windCross, 0.0f, 0.8f, "%.2f");
+    ImGui::SliderFloat("Gust Contrast", &m_settings.windGust, 0.0f, 1.8f, "%.2f");
 
     ImGui::SeparatorText("Light");
     ImGui::SliderFloat("Sun Yaw", &m_settings.sunYawDegrees, -180.0f, 180.0f, "%.0f deg");
@@ -506,6 +508,12 @@ FrameState App::BuildFrameState() const
         m_settings.windDetailNoiseScale,
         m_settings.windCross,
         m_settings.fieldExtent,
+    };
+    frame.scene.windC = {
+        m_settings.windWarpStrength,
+        m_settings.windAdvection,
+        m_settings.windGust,
+        0.0f,
     };
     frame.scene.grassShape = {
         m_settings.bladeHeight,

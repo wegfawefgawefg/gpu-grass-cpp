@@ -197,6 +197,8 @@ bool SaveDemoSettings(
          << "  \"windNoiseScale\": " << settings.windNoiseScale << ",\n"
          << "  \"windDetailNoiseScale\": " << settings.windDetailNoiseScale << ",\n"
          << "  \"windDetailStrength\": " << settings.windDetailStrength << ",\n"
+         << "  \"windWarpStrength\": " << settings.windWarpStrength << ",\n"
+         << "  \"windAdvection\": " << settings.windAdvection << ",\n"
          << "  \"windCross\": " << settings.windCross << ",\n"
          << "  \"windGust\": " << settings.windGust << ",\n"
          << "  \"sunYawDegrees\": " << settings.sunYawDegrees << ",\n"
@@ -270,6 +272,8 @@ bool LoadDemoSettings(DemoSettings& settings, std::string_view path, std::string
     ParseFloat(text, "windNoiseScale", loaded.windNoiseScale);
     ParseFloat(text, "windDetailNoiseScale", loaded.windDetailNoiseScale);
     ParseFloat(text, "windDetailStrength", loaded.windDetailStrength);
+    ParseFloat(text, "windWarpStrength", loaded.windWarpStrength);
+    ParseFloat(text, "windAdvection", loaded.windAdvection);
     ParseFloat(text, "windCross", loaded.windCross);
     ParseFloat(text, "windGust", loaded.windGust);
     ParseFloat(text, "sunYawDegrees", loaded.sunYawDegrees);

@@ -33,6 +33,7 @@ struct alignas(16) SceneUniforms
     Float4 sunColorAmbient;
     Float4 windA;
     Float4 windB;
+    Float4 windC;
     Float4 grassShape;
     Float4 grassMotion;
     Float4 grassColorBase;
@@ -65,6 +66,8 @@ struct DemoSettings
     float windNoiseScale = 0.075f;
     float windDetailNoiseScale = 0.20f;
     float windDetailStrength = 0.35f;
+    float windWarpStrength = 0.80f;
+    float windAdvection = 1.80f;
     float windCross = 0.16f;
     float windGust = 0.60f;
     float sunYawDegrees = 28.0f;
