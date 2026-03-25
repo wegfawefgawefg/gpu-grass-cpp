@@ -39,3 +39,7 @@
 
 # debug information files
 *.dwo
+
+# local build artifacts
+build/
+imgui.ini
