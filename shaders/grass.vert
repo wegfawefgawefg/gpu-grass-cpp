@@ -151,22 +151,23 @@ vec3 evaluateBladePoint(GrassBlade blade, vec3 basePosition, float t)
         saturate((t - params.grassMotion.x) / max(1.0 - params.grassMotion.x, 0.001)),
         0.55 + params.grassShape.w
     ) * params.grassShape.z;
-    float gustMultiplier = mix(0.45, 1.0 + params.grassMotion.y, gustNoise);
-    float primaryWave = (primaryNoise * 2.0 - 1.0) * params.windA.z * gustMultiplier;
-    float detailWave = (detailNoise * 2.0 - 1.0) * params.grassMotion.z;
-    float crossWave = (crossNoise * 2.0 - 1.0) * params.windB.z * params.windA.z * 0.65;
-    vec3 bend = windDirection * (primaryWave + detailWave) * bendWeight;
-    bend += crossDirection * crossWave * bendWeight;
+    float gustMultiplier = mix(0.55, 1.0 + params.grassMotion.y, gustNoise);
+    float downwindCarrier = params.windA.z * gustMultiplier * mix(0.72, 1.28, primaryNoise);
+    float alongTurbulence =
+        (detailNoise * 2.0 - 1.0) * params.grassMotion.z * params.windA.z * 0.30;
+    float crossTurbulence = (crossNoise * 2.0 - 1.0) * params.windB.z * params.windA.z * 0.42;
 
-    vec3 randomDirection = safeNormalize(
-        windDirection * 0.72 + vec3(sin(blade.params.y), 0.0, cos(blade.params.y)) * 0.28,
-        windDirection
-    );
-    vec3 randomLean =
-        randomDirection * params.grassMotion.w * (0.35 + blade.params.z * 0.65) * bendWeight;
+    vec3 bend = windDirection * (downwindCarrier + alongTurbulence) * bendWeight;
+    bend += crossDirection * crossTurbulence * bendWeight;
+
+    vec3 bladeDirection = vec3(sin(blade.params.y), 0.0, cos(blade.params.y));
+    float shapeVariation = (blade.params.z * 2.0 - 1.0) * params.grassMotion.w * 0.16;
+    vec3 restLean =
+        windDirection * params.grassMotion.w * (0.55 + blade.params.z * 0.45) * bendWeight;
+    vec3 sideLean = bladeDirection * shapeVariation * bendWeight;
     vec3 repulsor = evaluateRepulsors(basePosition, t);
 
-    vec3 position = basePosition + bend + randomLean + repulsor;
+    vec3 position = basePosition + bend + restLean + sideLean + repulsor;
     position.y += height * t;
     return position;
 }
