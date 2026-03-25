@@ -2,6 +2,8 @@
 
 Standalone Vulkan grass-field demo built with SDL3, SDL3_ttf, and ImGui.
 
+![gpu-grass-cpp demo](image.png)
+
 The current demo renders a lit procedural field of grass blades, drives wind with layered directional noise, and animates moving repulsor objects that push the grass away as they travel across the plane. A small `SDL3_ttf` overlay shows live frame stats, while ImGui exposes density, field size, grass color, wind, light, repulsor, and render-scale controls.
 
 ## Features
